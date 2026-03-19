@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@/lib/router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dashboardApi } from "../api/dashboard";
 import { activityApi } from "../api/activity";
 import { issuesApi } from "../api/issues";
@@ -19,7 +19,7 @@ import { ActivityRow } from "../components/ActivityRow";
 import { Identity } from "../components/Identity";
 import { timeAgo } from "../lib/timeAgo";
 import { cn, formatCents } from "../lib/utils";
-import { Bot, CircleDot, DollarSign, ShieldCheck, LayoutDashboard, PauseCircle } from "lucide-react";
+import { Bot, CircleDot, DollarSign, ShieldCheck, LayoutDashboard, PauseCircle, Pause, Play } from "lucide-react";
 import { ActiveAgentsPanel } from "../components/ActiveAgentsPanel";
 import { ChartCard, RunActivityChart, PriorityChart, IssueStatusChart, SuccessRateChart } from "../components/ActivityCharts";
 import { PageSkeleton } from "../components/PageSkeleton";
@@ -35,7 +35,10 @@ export function Dashboard() {
   const { selectedCompanyId, companies } = useCompany();
   const { openOnboarding } = useDialog();
   const { setBreadcrumbs } = useBreadcrumbs();
+  const queryClient = useQueryClient();
   const [animatedActivityIds, setAnimatedActivityIds] = useState<Set<string>>(new Set());
+  const [allPaused, setAllPaused] = useState(false);
+  const [isPauseToggling, setIsPauseToggling] = useState(false);
   const seenActivityIdsRef = useRef<Set<string>>(new Set());
   const hydratedActivityRef = useRef(false);
   const activityAnimationTimersRef = useRef<number[]>([]);
@@ -45,6 +48,37 @@ export function Dashboard() {
     queryFn: () => agentsApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
   });
+
+  // Sync allPaused state with actual agent data
+  useEffect(() => {
+    if (agents && agents.length > 0) {
+      const nonTerminated = agents.filter((a) => a.status !== "terminated");
+      if (nonTerminated.length > 0) {
+        setAllPaused(nonTerminated.every((a) => a.status === "paused"));
+      }
+    }
+  }, [agents]);
+
+  async function handleTogglePauseAll() {
+    if (!agents || !selectedCompanyId || isPauseToggling) return;
+    setIsPauseToggling(true);
+    try {
+      if (allPaused) {
+        // Resume all paused agents
+        const paused = agents.filter((a) => a.status === "paused");
+        await Promise.all(paused.map((a) => agentsApi.resume(a.id, selectedCompanyId)));
+      } else {
+        // Pause all active/running agents
+        const active = agents.filter((a) => a.status === "active" || a.status === "running");
+        await Promise.all(active.map((a) => agentsApi.pause(a.id, selectedCompanyId)));
+      }
+      setAllPaused(!allPaused);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(selectedCompanyId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(selectedCompanyId) });
+    } finally {
+      setIsPauseToggling(false);
+    }
+  }
 
   useEffect(() => {
     setBreadcrumbs([{ label: "Dashboard" }]);
@@ -206,6 +240,33 @@ export function Dashboard() {
         </div>
       )}
 
+      {agents && agents.length > 0 && (
+        <div className="flex items-center justify-end">
+          <button
+            onClick={handleTogglePauseAll}
+            disabled={isPauseToggling}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              allPaused
+                ? "bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                : "bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50",
+            )}
+          >
+            {allPaused ? (
+              <>
+                <Play className="h-4 w-4" />
+                {isPauseToggling ? "Resuming..." : "Resume All"}
+              </>
+            ) : (
+              <>
+                <Pause className="h-4 w-4" />
+                {isPauseToggling ? "Pausing..." : "Pause All"}
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       <ActiveAgentsPanel companyId={selectedCompanyId!} />
 
       {data && (
@@ -287,10 +348,10 @@ export function Dashboard() {
             <ChartCard title="Run Activity" subtitle="Last 14 days">
               <RunActivityChart runs={runs ?? []} />
             </ChartCard>
-            <ChartCard title="Issues by Priority" subtitle="Last 14 days">
+            <ChartCard title="Tasks by Priority" subtitle="Last 14 days">
               <PriorityChart issues={issues ?? []} />
             </ChartCard>
-            <ChartCard title="Issues by Status" subtitle="Last 14 days">
+            <ChartCard title="Tasks by Status" subtitle="Last 14 days">
               <IssueStatusChart issues={issues ?? []} />
             </ChartCard>
             <ChartCard title="Success Rate" subtitle="Last 14 days">

@@ -50,7 +50,7 @@ export function ExecutionWorkspaceDetail() {
         <DetailRow label="Project">
           {workspace.projectId ? <Link to={`/projects/${workspace.projectId}`} className="hover:underline">{workspace.projectId}</Link> : "None"}
         </DetailRow>
-        <DetailRow label="Source issue">
+        <DetailRow label="Source task">
           {workspace.sourceIssueId ? <Link to={`/issues/${workspace.sourceIssueId}`} className="hover:underline">{workspace.sourceIssueId}</Link> : "None"}
         </DetailRow>
         <DetailRow label="Branch">{workspace.branchName ?? "None"}</DetailRow>

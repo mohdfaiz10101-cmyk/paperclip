@@ -9,8 +9,8 @@ interface SidebarNavItemProps {
   icon: LucideIcon;
   end?: boolean;
   className?: string;
-  badge?: number;
-  badgeTone?: "default" | "danger";
+  badge?: number | string;
+  badgeTone?: "default" | "danger" | "warning";
   alert?: boolean;
   liveCount?: number;
 }
@@ -59,13 +59,15 @@ export function SidebarNavItem({
           <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{liveCount} live</span>
         </span>
       )}
-      {badge != null && badge > 0 && (
+      {badge != null && (typeof badge === "string" ? badge.length > 0 : badge > 0) && (
         <span
           className={cn(
             "ml-auto rounded-full px-1.5 py-0.5 text-xs leading-none",
             badgeTone === "danger"
               ? "bg-red-600/90 text-red-50"
-              : "bg-primary text-primary-foreground",
+              : badgeTone === "warning"
+                ? "bg-amber-500/90 text-amber-50"
+                : "bg-primary text-primary-foreground",
           )}
         >
           {badge}

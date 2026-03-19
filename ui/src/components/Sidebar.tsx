@@ -3,6 +3,8 @@ import {
   CircleDot,
   Target,
   LayoutDashboard,
+  MessageSquare,
+  Package,
   DollarSign,
   History,
   Search,
@@ -18,6 +20,7 @@ import { SidebarAgents } from "./SidebarAgents";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { heartbeatsApi } from "../api/heartbeats";
+import { agentsApi } from "../api/agents";
 import { queryKeys } from "../lib/queryKeys";
 import { useInboxBadge } from "../hooks/useInboxBadge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +37,17 @@ export function Sidebar() {
     refetchInterval: 10_000,
   });
   const liveRunCount = liveRuns?.length ?? 0;
+
+  const { data: sidebarAgents } = useQuery({
+    queryKey: queryKeys.agents.list(selectedCompanyId!),
+    queryFn: () => agentsApi.list(selectedCompanyId!),
+    enabled: !!selectedCompanyId,
+  });
+  const allAgentsPaused = (() => {
+    if (!sidebarAgents || sidebarAgents.length === 0) return false;
+    const nonTerminated = sidebarAgents.filter((a) => a.status !== "terminated");
+    return nonTerminated.length > 0 && nonTerminated.every((a) => a.status === "paused");
+  })();
 
   function openSearch() {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
@@ -69,15 +83,23 @@ export function Sidebar() {
 
       <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-auto-hide flex flex-col gap-4 px-3 py-2">
         <div className="flex flex-col gap-0.5">
-          {/* New Issue button aligned with nav items */}
+          <SidebarNavItem to="/chat" label="Chat" icon={MessageSquare} />
+          {/* New Task button aligned with nav items */}
           <button
             onClick={() => openNewIssue()}
             className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
           >
             <SquarePen className="h-4 w-4 shrink-0" />
-            <span className="truncate">New Issue</span>
+            <span className="truncate">New Task</span>
           </button>
-          <SidebarNavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} liveCount={liveRunCount} />
+          <SidebarNavItem
+            to="/dashboard"
+            label="Dashboard"
+            icon={LayoutDashboard}
+            liveCount={allAgentsPaused ? undefined : liveRunCount}
+            badge={allAgentsPaused ? "Paused" : undefined}
+            badgeTone={allAgentsPaused ? "warning" : undefined}
+          />
           <SidebarNavItem
             to="/inbox"
             label="Inbox"
@@ -96,8 +118,9 @@ export function Sidebar() {
         </div>
 
         <SidebarSection label="Work">
-          <SidebarNavItem to="/issues" label="Issues" icon={CircleDot} />
+          <SidebarNavItem to="/issues" label="Tasks" icon={CircleDot} />
           <SidebarNavItem to="/goals" label="Goals" icon={Target} />
+          <SidebarNavItem to="/artifacts" label="Artifacts" icon={Package} />
         </SidebarSection>
 
         <SidebarProjects />

@@ -35,6 +35,7 @@ import { AsciiArtAnimation } from "./AsciiArtAnimation";
 import { ChoosePathButton } from "./PathInstructionsModal";
 import { HintIcon } from "./agent-config-primitives";
 import { OpenCodeLogoIcon } from "./OpenCodeLogoIcon";
+import { FrontDoor } from "./FrontDoor";
 import {
   Building2,
   Bot,
@@ -58,7 +59,7 @@ import {
   MessageSquare
 } from "lucide-react";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 type AdapterType =
   | "claude_local"
   | "codex_local"
@@ -348,13 +349,19 @@ export function OnboardingWizard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const initialStep = onboardingOptions.initialStep ?? 1;
+  const initialStep = onboardingOptions.initialStep ?? 0;
   const existingCompanyId = onboardingOptions.companyId;
 
   // Restore saved state from localStorage (read once on mount)
   const saved = useMemo(loadSavedState, []);
 
   const [step, setStep] = useState<Step>((saved?.step as Step) ?? initialStep);
+  const [onboardingPath, setOnboardingPath] = useState<"create" | "grow" | null>((saved?.onboardingPath as "create" | "grow" | null) ?? null);
+
+  // "Grow existing" questionnaire fields
+  const [growWorkflows, setGrowWorkflows] = useState((saved?.growWorkflows as string) ?? "");
+  const [growPainPoints, setGrowPainPoints] = useState((saved?.growPainPoints as string) ?? "");
+  const [growAutomate, setGrowAutomate] = useState((saved?.growAutomate as string) ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
@@ -452,6 +459,7 @@ export function OnboardingWizard() {
       q1, q2, q3, q4, agentName, adapterType, cwd, model, command, args, url,
       createdCompanyId, createdCompanyPrefix, createdAgentId,
       planningTaskId, planContent, hiringRoles,
+      onboardingPath, growWorkflows, growPainPoints, growAutomate,
     };
     localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(state));
   }, [
@@ -459,6 +467,7 @@ export function OnboardingWizard() {
     q1, q2, q3, q4, agentName, adapterType, cwd, model, command, args, url,
     createdCompanyId, createdCompanyPrefix, createdAgentId,
     planningTaskId, planContent, hiringRoles,
+    onboardingPath, growWorkflows, growPainPoints, growAutomate,
   ]);
 
   // Resize textarea when step 3 is shown or description changes
@@ -550,7 +559,11 @@ export function OnboardingWizard() {
 
   function reset() {
     localStorage.removeItem(ONBOARDING_STORAGE_KEY);
-    setStep(1);
+    setStep(0);
+    setOnboardingPath(null);
+    setGrowWorkflows("");
+    setGrowPainPoints("");
+    setGrowAutomate("");
     setLoading(false);
     setError(null);
     setCompanyName("");
@@ -588,6 +601,14 @@ export function OnboardingWizard() {
   function handleClose() {
     reset();
     closeOnboarding();
+  }
+
+  function handleLaunchToChat() {
+    const prefix = createdCompanyPrefix;
+    const taskId = planningTaskId;
+    reset();
+    closeOnboarding();
+    navigate(prefix ? `/${prefix}/chat${taskId ? `?taskId=${taskId}` : ""}` : "/dashboard");
   }
 
   function buildAdapterConfig(): Record<string, unknown> {
@@ -680,7 +701,7 @@ export function OnboardingWizard() {
         queryKey: queryKeys.goals.list(company.id)
       });
 
-      setStep(2);
+      setStep(2); // → CEO config (was celebration, now swapped)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create company");
     } finally {
@@ -753,13 +774,21 @@ export function OnboardingWizard() {
 
       // Create the planning task unassigned — the CEO only gets assigned
       // when the user sends their first message (user controls initiation)
+      const isGrowPath = onboardingPath === "grow";
+      const growContext = isGrowPath
+        ? `\n\nExisting workflows: ${growWorkflows}\nPain points: ${growPainPoints}\nFirst automation priority: ${growAutomate}`
+        : "";
       const planningIssue = await issuesApi.create(createdCompanyId, {
-        title: "Build hiring plan with CEO",
-        description: `Company mission: ${companyGoal}
+        title: isGrowPath ? "Plan AI agents for existing company" : "Strategy & hiring plan with CEO",
+        description: `Company mission: ${companyGoal}${growContext}
 
-Collaborate with the board to create a hiring plan for the company.
+You are the CEO of this company. The board (the user) has just appointed you. Your first conversation should focus on STRATEGY — ask the board about their vision, priorities, and constraints. DO NOT immediately create a hiring plan. Instead:
 
-IMPORTANT: When writing the hiring plan document, use this exact format for EACH role. Use ## headings for each role (e.g. "## 1. Role Name") and ### sub-headings for each section within the role:
+1. FIRST: Greet the board briefly, then ask strategic questions to understand their priorities. Have a real conversation.
+2. ONLY WHEN the board says they're ready (e.g. "let's build the plan", "get started", "hire the team"), THEN create the hiring plan document.
+3. When you do create the plan, save it as a document using the plan key.${isGrowPath ? "\n4. Focus on agents that address the existing pain points and automate current workflows." : ""}
+
+When writing the hiring plan document, use this exact format for EACH role. Use ## headings for each role (e.g. "## 1. Role Name") and ### sub-headings for each section within the role:
 
 ## 1. Role Name
 ### Summary
@@ -782,7 +811,8 @@ Follow this structure for every role in the plan.`,
       });
       setPlanningTaskId(planningIssue.id);
 
-      setStep(4);
+      // Go to launch celebration step (step 3)
+      setStep(3);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create agent");
     } finally {
@@ -895,9 +925,10 @@ Follow this structure for every role in the plan.`,
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
+      if (step === 0) return; // front door requires click
       if (step === 1 && companyName.trim() && companyGoal.trim()) handleStep1Next();
-      else if (step === 2) setStep(3);
-      else if (step === 3 && agentName.trim()) handleStep2Next();
+      else if (step === 2 && agentName.trim()) handleStep2Next();
+      else if (step === 3) handleLaunchToChat();
       else if (step === 4) setStep(5);
       else if (step === 5) setStep(6);
       else if (step === 6) handleLaunch();
@@ -928,7 +959,18 @@ Follow this structure for every role in the plan.`,
             <span className="sr-only">Close</span>
           </button>
 
-          {/* Left half — form */}
+          {/* Step 0: Front Door — full-screen choice */}
+          {step === 0 && (
+            <div className="w-full flex flex-col overflow-y-auto">
+              <FrontDoor onChoose={(path) => {
+                setOnboardingPath(path);
+                setStep(1);
+              }} />
+            </div>
+          )}
+
+          {/* Left half — form (steps 1+) */}
+          {step !== 0 && (
           <div
             className={cn(
               "w-full flex flex-col overflow-y-auto transition-[width] duration-500 ease-in-out",
@@ -941,10 +983,8 @@ Follow this structure for every role in the plan.`,
                 {(
                   [
                     { step: 1 as Step, label: "Mission", icon: Building2 },
-                    { step: 2 as Step, label: "Launch", icon: Rocket },
-                    { step: 3 as Step, label: "CEO", icon: Bot },
-                    { step: 4 as Step, label: "Plan", icon: Sparkles },
-                    { step: 5 as Step, label: "Review", icon: ListTodo },
+                    { step: 2 as Step, label: "CEO", icon: Bot },
+                    { step: 3 as Step, label: "Launch", icon: Rocket },
                   ] as const
                 ).map(({ step: s, label, icon: Icon }) => (
                   <button
@@ -965,7 +1005,105 @@ Follow this structure for every role in the plan.`,
               </div>
 
               {/* Step content */}
-              {step === 1 && (
+              {step === 1 && onboardingPath === "grow" && (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="bg-muted/50 p-2">
+                      <Sparkles className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">Tell us about your company</h3>
+                      <p className="text-xs text-muted-foreground">
+                        We'll use this to configure your CEO and plan which agents to add.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="group">
+                    <label className={cn("text-xs mb-1 block transition-colors", companyName.trim() ? "text-foreground" : "text-muted-foreground group-focus-within:text-foreground")}>
+                      Company name
+                    </label>
+                    <input
+                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+                      placeholder="Acme Corp"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="group">
+                    <label className="text-xs text-muted-foreground mb-1 block">What does your company do?</label>
+                    <input
+                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+                      placeholder="e.g. We create educational YouTube content about AI"
+                      value={q1}
+                      onChange={(e) => setQ1(e.target.value)}
+                    />
+                  </div>
+                  <div className="group">
+                    <label className="text-xs text-muted-foreground mb-1 block">What are your current workflows?</label>
+                    <textarea
+                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[60px]"
+                      placeholder="e.g. Manual content creation, spreadsheet tracking, email outreach"
+                      value={growWorkflows}
+                      onChange={(e) => setGrowWorkflows(e.target.value)}
+                    />
+                  </div>
+                  <div className="group">
+                    <label className="text-xs text-muted-foreground mb-1 block">What pain points would you solve with AI?</label>
+                    <textarea
+                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[60px]"
+                      placeholder="e.g. Can't produce content fast enough, no time for social media"
+                      value={growPainPoints}
+                      onChange={(e) => setGrowPainPoints(e.target.value)}
+                    />
+                  </div>
+                  <div className="group">
+                    <label className="text-xs text-muted-foreground mb-1 block">What would you automate first?</label>
+                    <input
+                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+                      placeholder="e.g. Social media scheduling and content repurposing"
+                      value={growAutomate}
+                      onChange={(e) => setGrowAutomate(e.target.value)}
+                    />
+                  </div>
+                  {companyName.trim() && q1.trim() && (
+                    <>
+                      {!companyGoal.trim() && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const parts = [q1.trim()];
+                            if (growPainPoints.trim()) parts.push(`Key challenge: ${growPainPoints.trim()}`);
+                            if (growAutomate.trim()) parts.push(`First priority: automate ${growAutomate.trim().toLowerCase()}`);
+                            setCompanyGoal(parts.join(". "));
+                          }}
+                        >
+                          Generate mission from answers
+                        </Button>
+                      )}
+                      {companyGoal.trim() && (
+                        <div className="group">
+                          <label className="text-xs text-foreground mb-1 block">Generated mission — edit however you like:</label>
+                          <textarea
+                            className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[60px]"
+                            value={companyGoal}
+                            onChange={(e) => setCompanyGoal(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <button
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => { setOnboardingPath(null); setStep(0); }}
+                  >
+                    ← Back to start
+                  </button>
+                </div>
+              )}
+
+              {step === 1 && onboardingPath !== "grow" && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 mb-1">
                     <div className="bg-muted/50 p-2">
@@ -1179,27 +1317,8 @@ Follow this structure for every role in the plan.`,
                 </div>
               )}
 
-              {/* Step 2: Launch celebration */}
+              {/* Step 2: Create your CEO */}
               {step === 2 && (
-                <div className="space-y-6 text-center py-4">
-                  <div className="text-5xl">🚀</div>
-                  <div>
-                    <h3 className="text-xl font-semibold">{companyName} is live!</h3>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Your company has been created with the mission:
-                    </p>
-                    <p className="text-sm font-medium mt-1 italic">
-                      "{companyGoal}"
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Next, let's bring your CEO to life.
-                  </p>
-                </div>
-              )}
-
-              {/* Step 3: Create your CEO (was step 2) */}
-              {step === 3 && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 mb-1">
                     <div className="bg-muted/50 p-2">
@@ -1671,6 +1790,25 @@ Follow this structure for every role in the plan.`,
                 </div>
               )}
 
+              {/* Step 3: Launch celebration → exits to chat */}
+              {step === 3 && (
+                <div className="space-y-6 text-center py-4">
+                  <div className="text-5xl">🚀</div>
+                  <div>
+                    <h3 className="text-xl font-semibold">{companyName} is live!</h3>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Your company has been created. Your CEO is ready.
+                    </p>
+                    <p className="text-sm font-medium mt-1 italic">
+                      "{companyGoal}"
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Start a conversation with your CEO to discuss strategy and build your team.
+                  </p>
+                </div>
+              )}
+
               {/* Step 4: Chat with CEO */}
               {step === 4 && (
                 <div className="space-y-4">
@@ -1892,7 +2030,7 @@ Follow this structure for every role in the plan.`,
               {/* Footer navigation */}
               <div className="flex items-center justify-between mt-8">
                 <div>
-                  {step > 1 && step > (onboardingOptions.initialStep ?? 1) && (
+                  {step > 1 && step > (onboardingOptions.initialStep ?? 0) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1905,7 +2043,7 @@ Follow this structure for every role in the plan.`,
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {step === 1 && missionPath && (missionPath !== "questionnaire" || missionConfirmed) && (
+                  {step === 1 && (onboardingPath === "grow" || (missionPath && (missionPath !== "questionnaire" || missionConfirmed))) && (
                     <Button
                       size="sm"
                       disabled={!companyName.trim() || !companyGoal.trim() || loading}
@@ -1922,15 +2060,6 @@ Follow this structure for every role in the plan.`,
                   {step === 2 && (
                     <Button
                       size="sm"
-                      onClick={() => setStep(3)}
-                    >
-                      <ArrowRight className="h-3.5 w-3.5 mr-1" />
-                      Hire your CEO
-                    </Button>
-                  )}
-                  {step === 3 && (
-                    <Button
-                      size="sm"
                       disabled={
                         !agentName.trim() || loading || adapterEnvLoading
                       }
@@ -1942,6 +2071,15 @@ Follow this structure for every role in the plan.`,
                         <ArrowRight className="h-3.5 w-3.5 mr-1" />
                       )}
                       {loading ? "Bringing to life..." : "Give it a heartbeat"}
+                    </Button>
+                  )}
+                  {step === 3 && (
+                    <Button
+                      size="sm"
+                      onClick={handleLaunchToChat}
+                    >
+                      <Rocket className="h-3.5 w-3.5 mr-1" />
+                      Launch company
                     </Button>
                   )}
                   {step === 4 && !planContent && (
@@ -1977,8 +2115,9 @@ Follow this structure for every role in the plan.`,
               </div>
             </div>
           </div>
+          )}
 
-          {/* Right half — ASCII art (hidden on mobile) */}
+          {/* Right half — ASCII art (hidden on mobile, only for step 1) */}
           <div
             className={cn(
               "hidden md:block overflow-hidden bg-[#1d1d1d] transition-[width,opacity] duration-500 ease-in-out",
