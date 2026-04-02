@@ -1,0 +1,29 @@
+# docker-compose.discord.yml
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f scripts/docker-compose.discord.yml up discord-bot
+#
+# Or standalone (if Paperclip is already running elsewhere):
+#   DISCORD_TOKEN=xxx PAPERCLIP_COMPANY_ID=yyy CHANNEL_AGENT_MAP='{"123":"agent-uuid"}' \
+#     docker compose -f scripts/docker-compose.discord.yml up discord-bot
+
+services:
+  discord-bot:
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile.discord
+    container_name: paperclip-discord-bot
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: "${DISCORD_TOKEN:?DISCORD_TOKEN must be set}"
+      PAPERCLIP_URL: "${PAPERCLIP_URL:-http://server:3100}"
+      PAPERCLIP_COMPANY_ID: "${PAPERCLIP_COMPANY_ID:?PAPERCLIP_COMPANY_ID must be set}"
+      CHANNEL_AGENT_MAP: "${CHANNEL_AGENT_MAP:-{}}"
+      POLL_INTERVAL_SECONDS: "${POLL_INTERVAL_SECONDS:-5}"
+      POLL_TIMEOUT_SECONDS: "${POLL_TIMEOUT_SECONDS:-300}"
+    depends_on:
+      - server
+    networks:
+      - default
+    labels:
+      com.paperclip.service: "discord-bot"
