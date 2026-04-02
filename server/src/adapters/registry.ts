@@ -78,6 +78,22 @@ import {
   agentConfigurationDoc as hermesAgentConfigurationDoc,
   models as hermesModels,
 } from "hermes-paperclip-adapter";
+import {
+  execute as deerflowExecute,
+  testEnvironment as deerflowTestEnvironment,
+  sessionCodec as deerflowSessionCodec,
+} from "@paperclipai/adapter-deerflow/server";
+import { agentConfigurationDoc as deerflowAgentConfigurationDoc, models as deerflowModels } from "@paperclipai/adapter-deerflow";
+import {
+  execute as glmHttpExecute,
+  testEnvironment as glmHttpTestEnvironment,
+} from "@paperclipai/adapter-glm-http/server";
+import { agentConfigurationDoc as glmHttpAgentConfigurationDoc, models as glmHttpModels } from "@paperclipai/adapter-glm-http";
+import {
+  execute as aiderWorkerExecute,
+  testEnvironment as aiderWorkerTestEnvironment,
+} from "@paperclipai/adapter-aider-worker/server";
+import { agentConfigurationDoc as aiderWorkerAgentConfigurationDoc, models as aiderWorkerModels } from "@paperclipai/adapter-aider-worker";
 import { processAdapter } from "./process/index.js";
 import { httpAdapter } from "./http/index.js";
 
@@ -187,6 +203,34 @@ const hermesLocalAdapter: ServerAdapterModule = {
   detectModel: () => detectModelFromHermes(),
 };
 
+const deerflowAdapter: ServerAdapterModule = {
+  type: "deerflow",
+  execute: deerflowExecute,
+  testEnvironment: deerflowTestEnvironment,
+  sessionCodec: deerflowSessionCodec,
+  models: deerflowModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: deerflowAgentConfigurationDoc,
+};
+
+const glmHttpAdapter: ServerAdapterModule = {
+  type: "glm_http",
+  execute: glmHttpExecute,
+  testEnvironment: glmHttpTestEnvironment,
+  models: glmHttpModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: glmHttpAgentConfigurationDoc,
+};
+
+const aiderWorkerAdapter: ServerAdapterModule = {
+  type: "aider_worker",
+  execute: aiderWorkerExecute,
+  testEnvironment: aiderWorkerTestEnvironment,
+  models: aiderWorkerModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: aiderWorkerAgentConfigurationDoc,
+};
+
 const adaptersByType = new Map<string, ServerAdapterModule>(
   [
     claudeLocalAdapter,
@@ -197,6 +241,9 @@ const adaptersByType = new Map<string, ServerAdapterModule>(
     geminiLocalAdapter,
     openclawGatewayAdapter,
     hermesLocalAdapter,
+    deerflowAdapter,
+    glmHttpAdapter,
+    aiderWorkerAdapter,
     processAdapter,
     httpAdapter,
   ].map((a) => [a.type, a]),

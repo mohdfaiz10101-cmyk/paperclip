@@ -102,6 +102,19 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/adapters/aider-worker:
+    dependencies:
+      '@paperclipai/adapter-utils':
+        specifier: workspace:*
+        version: link:../../adapter-utils
+    devDependencies:
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.12.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/adapters/claude-local:
     dependencies:
       '@paperclipai/adapter-utils':
@@ -150,6 +163,19 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/adapters/deerflow:
+    dependencies:
+      '@paperclipai/adapter-utils':
+        specifier: workspace:*
+        version: link:../../adapter-utils
+    devDependencies:
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.12.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/adapters/gemini-local:
     dependencies:
       '@paperclipai/adapter-utils':
@@ -158,6 +184,19 @@ importers:
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
+    devDependencies:
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.12.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/adapters/glm-http:
+    dependencies:
+      '@paperclipai/adapter-utils':
+        specifier: workspace:*
+        version: link:../../adapter-utils
     devDependencies:
       '@types/node':
         specifier: ^24.6.0
@@ -403,6 +442,19 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/plugins/plugin-hyperchat-bridge:
+    dependencies:
+      '@paperclipai/plugin-sdk':
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.12.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/plugins/sdk:
     dependencies:
       '@paperclipai/shared':
@@ -440,6 +492,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.888.0
         version: 3.994.0
+      '@paperclipai/adapter-aider-worker':
+        specifier: workspace:*
+        version: link:../packages/adapters/aider-worker
       '@paperclipai/adapter-claude-local':
         specifier: workspace:*
         version: link:../packages/adapters/claude-local
@@ -449,9 +504,15 @@ importers:
       '@paperclipai/adapter-cursor-local':
         specifier: workspace:*
         version: link:../packages/adapters/cursor-local
+      '@paperclipai/adapter-deerflow':
+        specifier: workspace:*
+        version: link:../packages/adapters/deerflow
       '@paperclipai/adapter-gemini-local':
         specifier: workspace:*
         version: link:../packages/adapters/gemini-local
+      '@paperclipai/adapter-glm-http':
+        specifier: workspace:*
+        version: link:../packages/adapters/glm-http
       '@paperclipai/adapter-openclaw-gateway':
         specifier: workspace:*
         version: link:../packages/adapters/openclaw-gateway

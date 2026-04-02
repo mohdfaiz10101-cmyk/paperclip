@@ -16,6 +16,7 @@ import {
 } from "@paperclipai/shared";
 import type { StorageService } from "../storage/types.js";
 import { validate } from "../middleware/validate.js";
+import { routeIssueByLabels, findReviewAgent } from "../services/model-router.js";
 import {
   accessService,
   agentService,
@@ -856,8 +857,25 @@ export function issueRoutes(db: Db, storage: StorageService) {
     }
 
     const actor = getActorInfo(req);
+
+    // Model Router: auto-assign agent based on labels when no explicit assignee
+    let body = req.body;
+    if (!body.assigneeAgentId && !body.assigneeUserId && body.labelIds?.length > 0) {
+      try {
+        const routeResult = await routeIssueByLabels(db, companyId, body.labelIds);
+        if (routeResult) {
+          body = { ...body, assigneeAgentId: routeResult.agentId };
+          console.log(
+            `[model-router] Issue auto-routed: label "${routeResult.matchedLabel}" → ${routeResult.agentName} (${routeResult.rule})`,
+          );
+        }
+      } catch (err) {
+        console.warn("[model-router] Auto-routing failed, creating issue without assignment:", err);
+      }
+    }
+
     const issue = await svc.create(companyId, {
-      ...req.body,
+      ...body,
       createdByAgentId: actor.agentId,
       createdByUserId: actor.actorType === "user" ? actor.actorId : null,
     });
@@ -871,7 +889,13 @@ export function issueRoutes(db: Db, storage: StorageService) {
       action: "issue.created",
       entityType: "issue",
       entityId: issue.id,
-      details: { title: issue.title, identifier: issue.identifier },
+      details: {
+        title: issue.title,
+        identifier: issue.identifier,
+        ...(issue.assigneeAgentId && body !== req.body
+          ? { autoRouted: true, routedToAgentId: issue.assigneeAgentId }
+          : {}),
+      },
     });
 
     void queueIssueAssignmentWakeup({
@@ -1030,6 +1054,43 @@ export function issueRoutes(db: Db, storage: StorageService) {
       issue.status !== "backlog" &&
       req.body.status !== undefined;
 
+    // Code Review Pipeline: when issue transitions to in_review, auto-assign
+    // to the designated review agent (Opus Reviewer) and wake it.
+    const enteredReview =
+      req.body.status === "in_review" && existing.status !== "in_review";
+
+    if (enteredReview) {
+      try {
+        const reviewer = await findReviewAgent(db, issue.companyId);
+        if (reviewer && issue.assigneeAgentId !== reviewer.id) {
+          await svc.update(issue.id, { assigneeAgentId: reviewer.id });
+          issue.assigneeAgentId = reviewer.id;
+          console.log(
+            `[code-review-pipeline] Issue ${issue.identifier} entered in_review → auto-assigned to ${reviewer.name}`,
+          );
+          await logActivity(db, {
+            companyId: issue.companyId,
+            actorType: "system" as any,
+            actorId: "model-router",
+            agentId: null,
+            runId: null,
+            action: "issue.updated",
+            entityType: "issue",
+            entityId: issue.id,
+            details: {
+              identifier: issue.identifier,
+              autoReview: true,
+              assigneeAgentId: reviewer.id,
+              reviewerName: reviewer.name,
+              _previous: { assigneeAgentId: existing.assigneeAgentId },
+            },
+          });
+        }
+      } catch (err) {
+        console.warn("[code-review-pipeline] Auto-review assignment failed:", err);
+      }
+    }
+
     // Merge all wakeups from this update into one enqueue per agent to avoid duplicate runs.
     void (async () => {
       const wakeups = new Map<string, Parameters<typeof heartbeat.wakeup>[1]>();
@@ -1043,6 +1104,19 @@ export function issueRoutes(db: Db, storage: StorageService) {
           requestedByActorType: actor.actorType,
           requestedByActorId: actor.actorId,
           contextSnapshot: { issueId: issue.id, source: "issue.update" },
+        });
+      }
+
+      // Wake review agent when entering in_review status
+      if (enteredReview && issue.assigneeAgentId && !wakeups.has(issue.assigneeAgentId)) {
+        wakeups.set(issue.assigneeAgentId, {
+          source: "automation",
+          triggerDetail: "system",
+          reason: "code_review_requested",
+          payload: { issueId: issue.id, mutation: "update" },
+          requestedByActorType: actor.actorType,
+          requestedByActorId: actor.actorId,
+          contextSnapshot: { issueId: issue.id, source: "issue.code_review" },
         });
       }
 

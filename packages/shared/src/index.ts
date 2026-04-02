@@ -7,6 +7,8 @@ export {
   AGENT_ADAPTER_TYPES,
   AGENT_ROLES,
   AGENT_ROLE_LABELS,
+  AGENT_ROLE_LABELS_BILINGUAL,
+  AGENT_ROLE_LABELS_CN,
   AGENT_ICON_NAMES,
   ISSUE_STATUSES,
   ISSUE_PRIORITIES,
@@ -536,6 +538,7 @@ export {
   type ListPluginState,
 } from "./validators/index.js";
 
+export { t, tStatus, tPriority } from "./i18n.js";
 export { API_PREFIX, API } from "./api.js";
 export { normalizeAgentUrlKey, deriveAgentUrlKey, isUuidLike } from "./agent-url-key.js";
 export { deriveProjectUrlKey, normalizeProjectUrlKey } from "./project-url-key.js";

@@ -18,7 +18,7 @@ import { PageTabBar } from "../components/PageTabBar";
 import { Tabs } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Bot, Plus, List, GitBranch, SlidersHorizontal } from "lucide-react";
-import { AGENT_ROLE_LABELS, type Agent } from "@paperclipai/shared";
+import { AGENT_ROLE_LABELS, t, type Agent } from "@paperclipai/shared";
 
 const adapterLabels: Record<string, string> = {
   claude_local: "Claude",
@@ -139,10 +139,10 @@ export function Agents() {
         <Tabs value={tab} onValueChange={(v) => navigate(`/agents/${v}`)}>
           <PageTabBar
             items={[
-              { value: "all", label: "All" },
-              { value: "active", label: "Active" },
-              { value: "paused", label: "Paused" },
-              { value: "error", label: "Error" },
+              { value: "all", label: t("All") },
+              { value: "active", label: t("Active") },
+              { value: "paused", label: t("Paused") },
+              { value: "error", label: t("Error") },
             ]}
             value={tab}
             onValueChange={(v) => navigate(`/agents/${v}`)}
@@ -159,7 +159,7 @@ export function Agents() {
               onClick={() => setFiltersOpen(!filtersOpen)}
             >
               <SlidersHorizontal className="h-3 w-3" />
-              Filters
+              {t("Filters")}
               {showTerminated && <span className="ml-0.5 px-1 bg-foreground/10 rounded text-[10px]">1</span>}
             </button>
             {filtersOpen && (
@@ -174,7 +174,7 @@ export function Agents() {
                   )}>
                     {showTerminated && <span className="text-background text-[10px] leading-none">&#10003;</span>}
                   </span>
-                  Show terminated
+                  {t("Show terminated")}
                 </button>
               </div>
             )}
@@ -204,7 +204,7 @@ export function Agents() {
           )}
           <Button size="sm" variant="outline" onClick={openNewAgent}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Agent
+            {t("New Agent")}
           </Button>
         </div>
       </div>
@@ -219,7 +219,7 @@ export function Agents() {
         <EmptyState
           icon={Bot}
           message="Create your first agent to get started."
-          action="New Agent"
+          action={t("New Agent")}
           onAction={openNewAgent}
         />
       )}

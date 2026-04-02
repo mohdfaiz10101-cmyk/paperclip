@@ -31,6 +31,9 @@ export const AGENT_ADAPTER_TYPES = [
   "cursor",
   "openclaw_gateway",
   "hermes_local",
+  "deerflow",
+  "glm_http",
+  "aider_worker",
 ] as const;
 export type AgentAdapterType = (typeof AGENT_ADAPTER_TYPES)[number];
 
@@ -61,6 +64,34 @@ export const AGENT_ROLE_LABELS: Record<AgentRole, string> = {
   devops: "DevOps",
   researcher: "Researcher",
   general: "General",
+};
+
+export const AGENT_ROLE_LABELS_BILINGUAL: Record<AgentRole, string> = {
+  ceo: "CEO / 首席执行官",
+  cto: "CTO / 首席技术官",
+  cmo: "CMO / 首席营销官",
+  cfo: "CFO / 首席财务官",
+  engineer: "Engineer / 工程师",
+  designer: "Designer / 设计师",
+  pm: "PM / 产品经理",
+  qa: "QA / 测试工程师",
+  devops: "DevOps / 运维工程师",
+  researcher: "Researcher / 研究员",
+  general: "General / 通用助手",
+};
+
+export const AGENT_ROLE_LABELS_CN: Record<AgentRole, string> = {
+  ceo: "首席执行官",
+  cto: "首席技术官",
+  cmo: "首席营销官",
+  cfo: "首席财务官",
+  engineer: "工程师",
+  designer: "设计师",
+  pm: "产品经理",
+  qa: "测试工程师",
+  devops: "运维工程师",
+  researcher: "研究员",
+  general: "通用助手",
 };
 
 export const AGENT_ICON_NAMES = [

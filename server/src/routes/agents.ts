@@ -30,6 +30,7 @@ import { validate } from "../middleware/validate.js";
 import {
   agentService,
   agentInstructionsService,
+  agentFeedbackService,
   accessService,
   approvalService,
   companySkillService,
@@ -2315,6 +2316,27 @@ export function agentRoutes(db: Db) {
       agentName: agent.name,
       adapterType: agent.adapterType,
     });
+  });
+
+  // -----------------------------------------------------------------------
+  // Agent Performance Scores
+  // -----------------------------------------------------------------------
+
+  router.get("/companies/:companyId/agents/performance", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const feedbackSvc = agentFeedbackService(db);
+    const scores = await feedbackSvc.getCompanyScores(companyId);
+    res.json(scores);
+  });
+
+  router.get("/companies/:companyId/agents/:agentId/performance", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    const agentId = req.params.agentId as string;
+    assertCompanyAccess(req, companyId);
+    const feedbackSvc = agentFeedbackService(db);
+    const score = await feedbackSvc.getAgentScore(companyId, agentId);
+    res.json(score);
   });
 
   return router;

@@ -51,6 +51,7 @@ import {
   resolveExecutionWorkspaceMode,
 } from "./execution-workspace-policy.js";
 import { instanceSettingsService } from "./instance-settings.js";
+import { agentFeedbackService } from "./agent-feedback.js";
 import { redactCurrentUserText, redactCurrentUserValue } from "../log-redaction.js";
 import {
   hasSessionCompactionThresholds,
@@ -2715,6 +2716,20 @@ export function heartbeatService(db: Db) {
         }
       }
       await finalizeAgentStatus(agent.id, outcome);
+
+      // Record agent performance feedback (non-blocking)
+      void agentFeedbackService(db).recordFeedback({
+        agentId: agent.id,
+        companyId: agent.companyId,
+        runId: run.id,
+        issueId: readNonEmptyString(parseObject(run.contextSnapshot).issueId),
+        success: outcome === "succeeded",
+        durationMs: run.startedAt
+          ? new Date().getTime() - new Date(run.startedAt).getTime()
+          : 0,
+        modelUsed: readNonEmptyString(adapterResult.model) ?? null,
+        timestamp: new Date(),
+      }).catch(() => {});
     } catch (err) {
       const message = redactCurrentUserText(
         err instanceof Error ? err.message : "Unknown adapter failure",

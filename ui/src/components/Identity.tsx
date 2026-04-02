@@ -9,6 +9,8 @@ export interface IdentityProps {
   initials?: string;
   size?: IdentitySize;
   className?: string;
+  /** Optional bilingual role subtitle, e.g. "Engineer / 工程师" */
+  roleLabel?: string | null;
 }
 
 function deriveInitials(name: string): string {
@@ -24,7 +26,7 @@ const textSize: Record<IdentitySize, string> = {
   lg: "text-sm",
 };
 
-export function Identity({ name, avatarUrl, initials, size = "default", className }: IdentityProps) {
+export function Identity({ name, avatarUrl, initials, size = "default", className, roleLabel }: IdentityProps) {
   const displayInitials = initials ?? deriveInitials(name);
 
   return (
@@ -34,6 +36,7 @@ export function Identity({ name, avatarUrl, initials, size = "default", classNam
         <AvatarFallback>{displayInitials}</AvatarFallback>
       </Avatar>
       <span className={cn("truncate", textSize[size])}>{name}</span>
+      {roleLabel && <span className="text-[10px] text-muted-foreground whitespace-nowrap">({roleLabel})</span>}
     </span>
   );
 }

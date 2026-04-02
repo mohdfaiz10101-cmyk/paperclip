@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { CircleDot, Plus, Filter, ArrowUpDown, Layers, Check, X, ChevronRight, List, Columns3, User, Search } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
-import type { Issue } from "@paperclipai/shared";
+import { t, tStatus, type Issue } from "@paperclipai/shared";
 
 /* ── Helpers ── */
 
@@ -31,7 +31,7 @@ const statusOrder = ["in_progress", "todo", "backlog", "in_review", "blocked", "
 const priorityOrder = ["critical", "high", "medium", "low"];
 
 function statusLabel(status: string): string {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return tStatus(status);
 }
 
 /* ── View state ── */
@@ -63,10 +63,10 @@ const defaultViewState: IssueViewState = {
 };
 
 const quickFilterPresets = [
-  { label: "All", statuses: [] as string[] },
-  { label: "Active", statuses: ["todo", "in_progress", "in_review", "blocked"] },
-  { label: "Backlog", statuses: ["backlog"] },
-  { label: "Done", statuses: ["done", "cancelled"] },
+  { label: t("All"), statuses: [] as string[] },
+  { label: t("Active"), statuses: ["todo", "in_progress", "in_review", "blocked"] },
+  { label: t("Backlog"), statuses: ["backlog"] },
+  { label: t("Done"), statuses: ["done", "cancelled"] },
 ];
 const ISSUE_SEARCH_COMMIT_DELAY_MS = 150;
 
@@ -402,7 +402,7 @@ export function IssuesList({
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className={`text-xs ${activeFilterCount > 0 ? "text-blue-600 dark:text-blue-400" : ""}`}>
                 <Filter className="h-3.5 w-3.5 sm:h-3 sm:w-3 sm:mr-1" />
-                <span className="hidden sm:inline">{activeFilterCount > 0 ? `Filters: ${activeFilterCount}` : "Filter"}</span>
+                <span className="hidden sm:inline">{activeFilterCount > 0 ? `${t("Filters")}: ${activeFilterCount}` : t("Filter")}</span>
                 {activeFilterCount > 0 && (
                   <span className="sm:hidden text-[10px] font-medium ml-0.5">{activeFilterCount}</span>
                 )}
@@ -420,7 +420,7 @@ export function IssuesList({
             <PopoverContent align="end" className="w-[min(480px,calc(100vw-2rem))] p-0">
               <div className="p-3 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Filters</span>
+                  <span className="text-sm font-medium">{t("Filters")}</span>
                   {activeFilterCount > 0 && (
                     <button
                       className="text-xs text-muted-foreground hover:text-foreground"
@@ -573,17 +573,17 @@ export function IssuesList({
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-xs">
                   <ArrowUpDown className="h-3.5 w-3.5 sm:h-3 sm:w-3 sm:mr-1" />
-                  <span className="hidden sm:inline">Sort</span>
+                  <span className="hidden sm:inline">{t("Sort")}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-48 p-0">
                 <div className="p-2 space-y-0.5">
                   {([
-                    ["status", "Status"],
-                    ["priority", "Priority"],
-                    ["title", "Title"],
-                    ["created", "Created"],
-                    ["updated", "Updated"],
+                    ["status", t("Status")] as const,
+                    ["priority", t("Priority")] as const,
+                    ["title", t("Title")] as const,
+                    ["created", t("Created")] as const,
+                    ["updated", t("Updated")] as const,
                   ] as const).map(([field, label]) => (
                     <button
                       key={field}
@@ -617,16 +617,16 @@ export function IssuesList({
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-xs">
                   <Layers className="h-3.5 w-3.5 sm:h-3 sm:w-3 sm:mr-1" />
-                  <span className="hidden sm:inline">Group</span>
+                  <span className="hidden sm:inline">{t("Group")}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-44 p-0">
                 <div className="p-2 space-y-0.5">
                   {([
-                    ["status", "Status"],
-                    ["priority", "Priority"],
-                    ["assignee", "Assignee"],
-                    ["none", "None"],
+                    ["status", t("Status")] as const,
+                    ["priority", t("Priority")] as const,
+                    ["assignee", t("Assignee")] as const,
+                    ["none", t("None")] as const,
                   ] as const).map(([value, label]) => (
                     <button
                       key={value}
