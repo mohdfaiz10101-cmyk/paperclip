@@ -23,10 +23,15 @@ import { heartbeatsApi } from "../api/heartbeats";
 import { queryKeys } from "../lib/queryKeys";
 import { useInboxBadge } from "../hooks/useInboxBadge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { PluginSlotOutlet } from "@/plugins/slots";
 import { t } from "@paperclipai/shared";
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed?: boolean;
+}
+
+export function Sidebar({ collapsed = false }: SidebarProps) {
   const { openNewIssue } = useDialog();
   const { selectedCompanyId, selectedCompany } = useCompany();
   const inboxBadge = useInboxBadge(selectedCompanyId);
@@ -47,9 +52,52 @@ export function Sidebar() {
     companyPrefix: selectedCompany?.issuePrefix ?? null,
   };
 
+  // Collapsed: icon-only sidebar (w-12)
+  if (collapsed) {
+    return (
+      <aside className="w-12 h-full min-h-0 border-r border-border bg-background flex flex-col items-center py-2 gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => openNewIssue()}
+              className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+            >
+              <SquarePen className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">{t("New Issue")}</TooltipContent>
+        </Tooltip>
+        <div className="w-8 border-t border-border my-1" />
+        <SidebarNavItem to="/dashboard" label="" icon={LayoutDashboard} liveCount={liveRunCount} collapsed />
+        <SidebarNavItem
+          to="/inbox"
+          label=""
+          icon={Inbox}
+          badge={inboxBadge.inbox}
+          badgeTone={inboxBadge.failedRuns > 0 ? "danger" : "default"}
+          alert={inboxBadge.failedRuns > 0}
+          collapsed
+        />
+        <div className="w-8 border-t border-border my-1" />
+        <SidebarNavItem to="/issues" label="" icon={CircleDot} collapsed />
+        <SidebarNavItem to="/routines" label="" icon={Repeat} collapsed />
+        <SidebarNavItem to="/goals" label="" icon={Target} collapsed />
+        <div className="w-8 border-t border-border my-1" />
+        <SidebarProjects collapsed />
+        <SidebarAgents collapsed />
+        <div className="flex-1" />
+        <SidebarNavItem to="/org" label="" icon={Network} collapsed />
+        <SidebarNavItem to="/skills" label="" icon={Boxes} collapsed />
+        <SidebarNavItem to="/costs" label="" icon={DollarSign} collapsed />
+        <SidebarNavItem to="/activity" label="" icon={History} collapsed />
+        <SidebarNavItem to="/company/settings" label="" icon={Settings} collapsed />
+      </aside>
+    );
+  }
+
+  // Expanded: full sidebar (w-60)
   return (
     <aside className="w-60 h-full min-h-0 border-r border-border bg-background flex flex-col">
-      {/* Top bar: Company name (bold) + Search — aligned with top sections (no visible border) */}
       <div className="flex items-center gap-1 px-3 h-12 shrink-0">
         {selectedCompany?.brandColor && (
           <div
@@ -72,7 +120,6 @@ export function Sidebar() {
 
       <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-auto-hide flex flex-col gap-4 px-3 py-2">
         <div className="flex flex-col gap-0.5">
-          {/* New Issue button aligned with nav items */}
           <button
             onClick={() => openNewIssue()}
             className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"

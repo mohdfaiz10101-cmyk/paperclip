@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Moon, Settings, Sun } from "lucide-react";
+import { Activity, BookOpen, Building2, Moon, Settings, Sun } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate, useParams } from "@/lib/router";
 import { CompanyRail } from "./CompanyRail";
 import { Sidebar } from "./Sidebar";
@@ -47,7 +47,7 @@ function readRememberedInstanceSettingsPath(): string {
 }
 
 export function Layout() {
-  const { sidebarOpen, setSidebarOpen, toggleSidebar, isMobile } = useSidebar();
+  const { sidebarOpen, sidebarCollapsed, setSidebarOpen, toggleSidebar, isMobile } = useSidebar();
   const { openNewIssue, openOnboarding } = useDialog();
   const { togglePanelVisible } = usePanel();
   const {
@@ -340,60 +340,173 @@ export function Layout() {
             </div>
           </div>
         ) : (
-          <div className="flex h-full flex-col shrink-0">
-            <div className="flex flex-1 min-h-0">
+          <div className="flex h-full flex-col shrink-0 overflow-hidden">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
               <CompanyRail />
               <div
                 className={cn(
                   "overflow-hidden transition-[width] duration-100 ease-out",
-                  sidebarOpen ? "w-60" : "w-0"
+                  sidebarOpen ? (sidebarCollapsed ? "w-12" : "w-60") : "w-0"
                 )}
               >
-                {isInstanceSettingsRoute ? <InstanceSidebar /> : <Sidebar />}
+                {isInstanceSettingsRoute ? <InstanceSidebar /> : <Sidebar collapsed={sidebarCollapsed} />}
               </div>
             </div>
-            <div className="border-t border-r border-border px-3 py-2">
-              <div className="flex items-center gap-1">
-                <a
-                  href="https://docs.paperclip.ing/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
-                >
-                  <BookOpen className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Documentation</span>
-                </a>
+            <div className={cn("border-t border-r border-border", sidebarCollapsed && sidebarOpen ? "px-1.5 py-1.5" : "px-3 py-2")}>
+              <div className={cn("flex items-center gap-1", sidebarCollapsed && sidebarOpen && "justify-center flex-wrap")}>
+                {/* --- Chronos --- */}
+                {sidebarCollapsed && sidebarOpen ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href="http://localhost:9875/chronos.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center px-2.5 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground"
+                      >
+                        <Activity className="h-4 w-4" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Chronos</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <a
+                    href="http://localhost:9875/chronos.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
+                  >
+                    <Activity className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Chronos</span>
+                  </a>
+                )}
+
+                {/* --- SpectrAI Office --- */}
+                {sidebarCollapsed && sidebarOpen ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href="http://localhost:3200"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center px-2.5 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground"
+                      >
+                        <Building2 className="h-4 w-4" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">SpectrAI Office</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <a
+                    href="http://localhost:3200"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
+                  >
+                    <Building2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">SpectrAI Office</span>
+                  </a>
+                )}
+
+                {/* --- Documentation --- */}
+                {sidebarCollapsed && sidebarOpen ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href="https://docs.paperclip.ing/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center px-2.5 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground"
+                      >
+                        <BookOpen className="h-4 w-4" />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Documentation</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <a
+                    href="https://docs.paperclip.ing/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
+                  >
+                    <BookOpen className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Documentation</span>
+                  </a>
+                )}
+
+                {/* --- Version --- */}
                 {health?.version && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="px-2 text-xs text-muted-foreground shrink-0 cursor-default">v</span>
+                      <span className={cn(
+                        "text-xs text-muted-foreground shrink-0 cursor-default",
+                        sidebarCollapsed && sidebarOpen ? "px-1 py-2" : "px-2",
+                      )}>
+                        {sidebarCollapsed && sidebarOpen ? "v" : `v${health.version}`}
+                      </span>
                     </TooltipTrigger>
-                    <TooltipContent>v{health.version}</TooltipContent>
+                    <TooltipContent side="right">v{health.version}</TooltipContent>
                   </Tooltip>
                 )}
-                <Button variant="ghost" size="icon-sm" className="text-muted-foreground shrink-0" asChild>
-                  <Link
-                    to={instanceSettingsTarget}
-                    aria-label="Instance settings"
-                    title="Instance settings"
-                    onClick={() => {
-                      if (isMobile) setSidebarOpen(false);
-                    }}
+
+                {/* --- Settings --- */}
+                {sidebarCollapsed && sidebarOpen ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" className="text-muted-foreground shrink-0" asChild>
+                        <Link to={instanceSettingsTarget} aria-label="Instance settings">
+                          <Settings className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Instance settings</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button variant="ghost" size="icon-sm" className="text-muted-foreground shrink-0" asChild>
+                    <Link
+                      to={instanceSettingsTarget}
+                      aria-label="Instance settings"
+                      title="Instance settings"
+                      onClick={() => {
+                        if (isMobile) setSidebarOpen(false);
+                      }}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+
+                {/* --- Theme Toggle --- */}
+                {sidebarCollapsed && sidebarOpen ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground shrink-0"
+                        onClick={toggleTheme}
+                        aria-label={`Switch to ${nextTheme} mode`}
+                      >
+                        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Switch to {nextTheme} mode</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground shrink-0"
+                    onClick={toggleTheme}
+                    aria-label={`Switch to ${nextTheme} mode`}
+                    title={`Switch to ${nextTheme} mode`}
                   >
-                    <Settings className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground shrink-0"
-                  onClick={toggleTheme}
-                  aria-label={`Switch to ${nextTheme} mode`}
-                  title={`Switch to ${nextTheme} mode`}
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
+                    {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

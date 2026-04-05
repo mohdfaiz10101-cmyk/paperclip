@@ -24,5 +24,10 @@ export const approvals = pgTable(
       table.status,
       table.type,
     ),
+    companyStatusCreatedIdx: index("approvals_company_status_created_idx").on(
+      table.companyId,
+      table.status,
+      table.createdAt.desc(),
+    ),
   }),
 );

@@ -28,6 +28,8 @@ import {
   History,
   SquarePen,
   Plus,
+  Play,
+  Loader2,
 } from "lucide-react";
 import { Identity } from "./Identity";
 import { agentUrl, projectUrl } from "../lib/utils";
@@ -35,6 +37,7 @@ import { agentUrl, projectUrl } from "../lib/utils";
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [invoking, setInvoking] = useState<string | null>(null);
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
   const { openNewIssue, openNewAgent } = useDialog();
@@ -207,6 +210,38 @@ export function CommandPalette() {
 
         {agents.length > 0 && (
           <>
+            <CommandSeparator />
+            <CommandGroup heading="Invoke Agent">
+              {agents
+                .filter((a) => a.status !== "terminated" && a.status !== "error")
+                .slice(0, 6)
+                .map((agent) => (
+                  <CommandItem
+                    key={`invoke-${agent.id}`}
+                    value={`${agent.name} ${agent.role ?? ""}`}
+                    onSelect={async () => {
+                      if (invoking) return;
+                      setInvoking(agent.id);
+                      try {
+                        if (selectedCompanyId) await agentsApi.invoke(agent.id, selectedCompanyId);
+                      } catch {
+                        // invocation failed silently
+                      }
+                      setInvoking(null);
+                      setOpen(false);
+                      navigate(agentUrl(agent));
+                    }}
+                  >
+                    {invoking === agent.id ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="mr-2 h-4 w-4 text-green-500" />
+                    )}
+                    {agent.name}
+                    <span className="text-xs text-muted-foreground ml-auto">invoke</span>
+                  </CommandItem>
+                ))}
+            </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading="Agents">
               {agents.slice(0, 10).map((agent) => (

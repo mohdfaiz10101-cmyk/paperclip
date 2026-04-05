@@ -3,6 +3,7 @@ import type {
   AdapterExecutionResult,
   AdapterInvocationMeta,
 } from "@paperclipai/adapter-utils";
+import { validateGLMHttpConfig } from "../config-schema.js";
 
 function asString(val: unknown, fallback: string): string {
   return typeof val === "string" && val.trim().length > 0 ? val.trim() : fallback;
@@ -46,6 +47,23 @@ interface ChatCompletionResponse {
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
   const { runId, agent, config, context, onLog, onMeta } = ctx;
 
+  // Validate configuration early with Zod schema
+  try {
+    validateGLMHttpConfig(config);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await onLog("stderr", `[glm-http] Configuration validation failed:\n${errorMessage}\n`);
+    return {
+      exitCode: 1,
+      signal: null,
+      timedOut: false,
+      errorMessage,
+      errorCode: "invalid_config",
+      provider: "litellm",
+      model: "unknown",
+    };
+  }
+
   const baseUrl = asString(config.baseUrl, "http://localhost:4000");
   const model = asString(config.model, "cloud/glm-4-flash");
   const systemPrompt = asString(
@@ -60,6 +78,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const maxTokens = asNumber(config.maxTokens, 2048);
   const timeoutSec = asNumber(config.timeoutSec, 120);
   const apiKey = asString(config.apiKey, "");
+  const enableWebSearch = config.enableWebSearch === true;
+  const webSearchEngine = asString(config.webSearchEngine, "search_pro");
+  const webSearchEnabled = config.webSearch === true || config.webSearch === "true";
+  const doSample = config.doSample === true || config.doSample === "true" ? true
+    : config.doSample === false || config.doSample === "false" ? false
+    : undefined;
 
   const templateData = {
     agentId: agent.id,
@@ -97,6 +121,24 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     headers["authorization"] = `Bearer ${apiKey}`;
   }
 
+  // Build request body with optional web_search tool
+  const requestBody: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: enableWebSearch ? Math.min(temperature, 0.5) : temperature,
+    max_tokens: maxTokens,
+  };
+
+  if (enableWebSearch) {
+    requestBody.tools = [{
+      type: "web_search",
+      enable: true,
+      search_engine: webSearchEngine,
+    }];
+    // Lower temperature for better tool call success rate
+    await onLog("stdout", `[glm-http] Web search enabled (${webSearchEngine})\n`);
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutSec * 1000);
 
@@ -104,12 +146,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     const res = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
 

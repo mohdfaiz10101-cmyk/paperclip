@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { NavLink, useLocation } from "@/lib/router";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
@@ -19,7 +20,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { Agent } from "@paperclipai/shared";
-export function SidebarAgents() {
+interface SidebarAgentsProps {
+  collapsed?: boolean;
+}
+
+export function SidebarAgents({ collapsed = false }: SidebarAgentsProps) {
   const [open, setOpen] = useState(true);
   const { selectedCompanyId } = useCompany();
   const { openNewAgent } = useDialog();
@@ -68,7 +73,29 @@ export function SidebarAgents() {
   const activeAgentId = agentMatch?.[1] ?? null;
   const activeTab = agentMatch?.[2] ?? null;
 
+  // Collapsed: show agent icons only
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-1 py-1">
+        {orderedAgents.slice(0, 8).map((agent: Agent) => (
+          <Tooltip key={agent.id}>
+            <TooltipTrigger asChild>
+              <NavLink
+                to={agentUrl(agent)}
+                onClick={() => { if (isMobile) setSidebarOpen(false); }}
+                className="flex items-center justify-center w-7 h-7 rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+              >
+                <AgentIcon icon={agent.icon} className="h-3.5 w-3.5" />
+              </NavLink>
+            </TooltipTrigger>
+            <TooltipContent side="right">{agent.name}</TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    );
+  }
 
+  // Normal: full agent list
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <div className="group">

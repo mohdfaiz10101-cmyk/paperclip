@@ -55,6 +55,8 @@ function buildAiderArgs(
     autoCommit: boolean;
     editFormat: string;
     workDir: string;
+    weakModel?: string;
+    editorModel?: string;
   },
 ): string[] {
   const args: string[] = [
@@ -80,6 +82,28 @@ function buildAiderArgs(
     args.push("--model", `openai/${model}`);
   } else {
     args.push("--model", model);
+  }
+
+  // Weak model for summarization/commit messages (e.g. free glm-4-flash)
+  const weakModel = opts.weakModel ?? "";
+  if (weakModel) {
+    if (weakModel.startsWith("glm") || weakModel.startsWith("cloud/")) {
+      args.push("--weak-model", `openai/${weakModel.replace(/^cloud\//, "")}`);
+    } else {
+      args.push("--weak-model", weakModel);
+    }
+  }
+
+  // Editor model for code editing operations
+  const editorModel = opts.editorModel ?? "";
+  if (editorModel) {
+    if (editorModel.startsWith("deepseek")) {
+      args.push("--editor-model", `openai/${editorModel}`);
+    } else if (editorModel.startsWith("glm") || editorModel.startsWith("cloud/")) {
+      args.push("--editor-model", `openai/${editorModel.replace(/^cloud\//, "")}`);
+    } else {
+      args.push("--editor-model", editorModel);
+    }
   }
 
   args.push("--message", task);
@@ -210,6 +234,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const { runId, agent, config, context, onLog, onMeta } = ctx;
 
   const model = asString(config.model, "glm-4.7");
+  const weakModel = asString(config.weakModel, "");
+  const editorModel = asString(config.editorModel, "");
   const workDir = asString(config.workDir, "/tmp/aider-work");
   const autoCommit = asBoolean(config.autoCommit, true);
   const editFormat = asString(config.editFormat, "whole");
@@ -252,7 +278,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     mkdirSync(workDir, { recursive: true });
 
     const env = buildAiderEnv(model);
-    const args = buildAiderArgs(model, taskContent, { autoCommit, editFormat, workDir });
+    const args = buildAiderArgs(model, taskContent, { autoCommit, editFormat, workDir, weakModel, editorModel });
 
     await onLog("stdout", `[aider] Working directory: ${workDir}\n`);
     result = await runAider(args, env, workDir, timeoutSec * 1000, onLog);

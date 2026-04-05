@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { NavLink, useLocation } from "@/lib/router";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus } from "lucide-react";
 import {
@@ -115,7 +116,11 @@ function SortableProjectItem({
   );
 }
 
-export function SidebarProjects() {
+interface SidebarProjectsProps {
+  collapsed?: boolean;
+}
+
+export function SidebarProjects({ collapsed = false }: SidebarProjectsProps) {
   const [open, setOpen] = useState(true);
   const { selectedCompany, selectedCompanyId } = useCompany();
   const { openNewProject } = useDialog();
@@ -139,7 +144,6 @@ export function SidebarProjects() {
   });
 
   const currentUserId = session?.user?.id ?? session?.session?.userId ?? null;
-
   const visibleProjects = useMemo(
     () => (projects ?? []).filter((project: Project) => !project.archivedAt),
     [projects],
@@ -152,6 +156,7 @@ export function SidebarProjects() {
 
   const projectMatch = location.pathname.match(/^\/(?:[^/]+\/)?projects\/([^/]+)/);
   const activeProjectRef = projectMatch?.[1] ?? null;
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -162,17 +167,36 @@ export function SidebarProjects() {
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
-
       const ids = orderedProjects.map((project) => project.id);
       const oldIndex = ids.indexOf(active.id as string);
       const newIndex = ids.indexOf(over.id as string);
       if (oldIndex === -1 || newIndex === -1) return;
-
       persistOrder(arrayMove(ids, oldIndex, newIndex));
     },
     [orderedProjects, persistOrder],
   );
 
+  // Collapsed: show only project color dots
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-1 py-1">
+        {orderedProjects.slice(0, 6).map((project: Project) => (
+          <Tooltip key={project.id}>
+            <TooltipTrigger asChild>
+              <NavLink
+                to={`/projects/${projectRouteRef(project)}/issues`}
+                className="flex items-center justify-center w-7 h-7 rounded-sm transition-colors hover:bg-accent/50"
+                style={{ backgroundColor: project.color ?? "#6366f1" }}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="right">{project.name}</TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    );
+  }
+
+  // Normal: full list
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <div className="group">
